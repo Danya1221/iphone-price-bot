@@ -26,7 +26,7 @@ print("✅ Веб-сервер запущен на порту 8080")
 TELEGRAM_TOKEN = "It's Private :)"  # ← ЗАМЕНИ НА СВОЙ ТОКЕН!
 CHANNEL_ID = '@Netizenshop'
 EXCEL_FILE = 'products.xlsx'
-MESSAGE_IDS_FILE = 'message_ids.json'  # Единый файл для хранения ID сообщений
+MESSAGE_IDS_FILE = 'message_ids.json'
 
 def load_message_ids():
     """Загружает словарь с ID отправленных сообщений"""
@@ -47,14 +47,12 @@ async def send_or_edit_product(bot, product_code, product_name, price, image_url
     try:
         if image_url and image_url.strip():
             if message_id:
-                # Редактируем существующий пост с фото
                 await bot.edit_message_media(
                     chat_id=CHANNEL_ID,
                     message_id=message_id,
                     media=InputMediaPhoto(media=image_url, caption=caption)
                 )
             else:
-                # Отправляем новый пост с фото
                 msg = await bot.send_photo(
                     chat_id=CHANNEL_ID,
                     photo=image_url,
@@ -63,44 +61,36 @@ async def send_or_edit_product(bot, product_code, product_name, price, image_url
                 return msg.message_id
         else:
             if message_id:
-                # Редактируем существующий пост без фото
                 await bot.edit_message_text(
                     chat_id=CHANNEL_ID,
                     message_id=message_id,
                     text=caption
                 )
             else:
-                # Отправляем новый пост без фото
                 msg = await bot.send_message(
                     chat_id=CHANNEL_ID,
                     text=caption
                 )
                 return msg.message_id
     except TelegramError as e:
-        print(f"Ошибка при отправке/редактировании {product_code}: {e}")
+        print(f"Ошибка: {e}")
     return None
 
 async def main():
-    """Основной цикл бота"""
     print("🚀 Бот запускается...")
     bot = Bot(token=TELEGRAM_TOKEN)
     message_ids = load_message_ids()
-    print(f"📦 Загружено {len(message_ids)} сохранённых сообщений")
     
     while True:
         try:
-            # Проверяем, существует ли файл Excel
             if not os.path.exists(EXCEL_FILE):
                 print(f"❌ Файл {EXCEL_FILE} не найден!")
                 await asyncio.sleep(60)
                 continue
             
-            # Открываем Excel
             wb = openpyxl.load_workbook(EXCEL_FILE)
             sheet = wb.active
             
-            # Проходим по всем строкам (начиная со второй, первая - заголовки)
-            row_count = 0
             for row in sheet.iter_rows(min_row=2, values_only=False):
                 product_code = row[0].value
                 product_name = row[1].value
@@ -110,13 +100,12 @@ async def main():
                 if not product_code or not product_name or not price:
                     continue
                 
-                row_count += 1
                 existing_message_id = message_ids.get(str(product_code))
                 
                 if existing_message_id:
-                    print(f"🔄 Обновляем {product_name} (ID: {product_code})")
+                    print(f"🔄 Обновляем: {product_name}")
                 else:
-                    print(f"📤 Отправляем новый товар: {product_name} (ID: {product_code})")
+                    print(f"📤 Отправляем новый: {product_name}")
                 
                 new_id = await send_or_edit_product(
                     bot, str(product_code), product_name, price, image_url, existing_message_id
@@ -125,16 +114,12 @@ async def main():
                 if new_id:
                     message_ids[str(product_code)] = new_id
             
-            print(f"✅ Обработано {row_count} товаров")
-            
-            # Сохраняем ID сообщений
             save_message_ids(message_ids)
             wb.close()
             
         except Exception as e:
-            print(f"❌ Ошибка в основном цикле: {e}")
+            print(f"❌ Ошибка: {e}")
         
-        # Ждём 60 секунд перед следующей проверкой
         await asyncio.sleep(60)
 
 if __name__ == "__main__":
