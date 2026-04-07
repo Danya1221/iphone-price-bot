@@ -6,6 +6,56 @@ from flask import Flask
 import threading
 from datetime import datetime
 
+# ========= ДИАГНОСТИКА ==========
+print("🔍 ДИАГНОСТИКА ЗАПУЩЕНА")
+print(f"📂 Текущая папка: {os.getcwd()}")
+print(f"📂 Содержимое папки: {os.listdir('.')}")
+
+FILE = "products.xlsx"
+
+# Проверяем Excel файл
+if os.path.exists(FILE):
+    print(f"✅ Файл {FILE} НАЙДЕН!")
+    # Попробуем прочитать первую строку
+    try:
+        wb = openpyxl.load_workbook(FILE)
+        sheet = wb.active
+        print(f"📊 Кол-во строк: {sheet.max_row}")
+        print(f"📊 Кол-во колонок: {sheet.max_column}")
+        
+        # Покажем заголовки
+        headers = []
+        for cell in sheet[1]:
+            headers.append(cell.value)
+        print(f"📋 Заголовки: {headers}")
+        
+        # Покажем первые 3 строки данных
+        for i in range(2, min(5, sheet.max_row + 1)):
+            row_data = []
+            for cell in sheet[i]:
+                row_data.append(cell.value)
+            print(f"📋 Строка {i-1}: {row_data}")
+        
+        wb.close()
+    except Exception as e:
+        print(f"❌ Ошибка чтения Excel: {e}")
+else:
+    print(f"❌ ФАЙЛ {FILE} НЕ НАЙДЕН!")
+    
+    # Создадим тестовый Excel для проверки
+    print("📝 Создаю тестовый Excel файл...")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Model", "Storage", "Type", "Color", "Price"])
+    ws.append(["iPhone 17", "256GB", "eSIM", "Black", 99900])
+    ws.append(["iPhone 17", "512GB", "eSIM", "White", 109900])
+    ws.append(["iPhone 17 Air", "256GB", "eSIM", "Blue", 129900])
+    ws.append(["iPhone 17 Air", "512GB", "eSIM", "Sage", 139900])
+    wb.save(FILE)
+    print(f"✅ Создан тестовый {FILE} с 4 товарами")
+    print("⚠️ ВНИМАНИЕ: Используй тестовый файл! Замени его потом на свой.")
+# =================================
+
 # ========= ВЕБ-СЕРВЕР ==========
 app = Flask(__name__)
 
@@ -23,7 +73,6 @@ print("✅ Веб-сервер запущен")
 # ========= НАСТРОЙКИ ==========
 TOKEN = "8103497827:AAF4FrhXgx4PTpuLbK6dY-tALg7Iu6UWhkE"
 CHANNEL = "@Netizenshop"
-FILE = "products.xlsx"
 MESSAGE_ID_FILE = "post_message_id.txt"
 
 # Эмодзи для оформления
@@ -125,12 +174,13 @@ def save_post_message_id(message_id):
 
 def read_products_from_excel():
     """Читает товары из Excel (5 колонок: Model, Storage, Type, Color, Price)"""
+    print("📖 Начинаю чтение Excel...")
     wb = openpyxl.load_workbook(FILE)
     sheet = wb.active
     
     products = []
     
-    for row in sheet.iter_rows(min_row=2, values_only=True):
+    for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         model = row[0] if len(row) > 0 else None
         storage = row[1] if len(row) > 1 else None
         sim_type = row[2] if len(row) > 2 else None
@@ -158,6 +208,7 @@ def read_products_from_excel():
         })
     
     wb.close()
+    print(f"📖 Прочитано товаров: {len(products)}")
     return products
 
 async def main():
@@ -192,8 +243,8 @@ async def main():
             post_text = format_price_list(products)
             
             # Выводим в консоль для отладки
-            print("📝 Текст поста:")
-            print(post_text)
+            print("📝 Текст поста (первые 500 символов):")
+            print(post_text[:500])
             print("---")
             
             try:
