@@ -1,4 +1,4 @@
-import time          
+import time
 import openpyxl
 from telegram import Bot, InputMediaPhoto
 from telegram.error import TelegramError, NetworkError
@@ -12,26 +12,28 @@ import sys
 from flask import Flask
 import threading
 
-REQUIRED_LIBRARIES = [
-    "openpyxl",
-    "python-telegram-bot",
-    "jdatetime"
-]
+# ========= ВЕБ-СЕРВЕР ДЛЯ RENDER ==========
+app = Flask(__name__)
 
-def install_required_libraries():
-    for library in REQUIRED_LIBRARIES:
-        try:
-            __import__(library.split("=")[0])
-        except ImportError:
-            print(f"Installing {library}...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", library])
+@app.route('/')
+def home():
+    return "Бот для цен iPhone работает!"
 
-# ========== ТВОИ НАСТРОЙКИ (НЕ ТРОГАЙ) ==========
-TELEGRAM_TOKEN = "It's Private :)"  # ← здесь должен быть твой настоящий токен
+def run_web():
+    """Запускает веб-сервер на порту 8080"""
+    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+
+# Запускаем веб-сервер в отдельном потоке
+threading.Thread(target=run_web, daemon=True).start()
+print("✅ Веб-сервер запущен на порту 8080")
+# ==========================================
+
+
+# ========= ТВОИ НАСТРОЙКИ ==========
+TELEGRAM_TOKEN = "8708654790:AAEG-HQcgYgLykvceLpGJUiQFLOuS3d8c2k"  # ← замени на свой токен!
 CHANNEL_ID = '@Netizenshop'
 EXCEL_FILE = 'products.xlsx'
 MESSAGE_IDS_FILE = 'message_ids.json'
-UPLOADED_POSTS_FILE = 'uploaded_posts.txt'
 
 message_ids = {}
 uploaded_posts = set()  
