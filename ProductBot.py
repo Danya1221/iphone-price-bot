@@ -23,7 +23,7 @@ print("✅ Веб-сервер запущен на порту 8080")
 # ==========================================
 
 # ========= НАСТРОЙКИ БОТА ==========
-TELEGRAM_TOKEN = "It's Private :)"  # ← ЗАМЕНИ НА СВОЙ ТОКЕН!
+TELEGRAM_TOKEN = "8708654790:AAEG-HQcgYgLykvceLpGJUiQFLOuS3d8c2k"  # ← ЗАМЕНИ НА СВОЙ ТОКЕН!
 CHANNEL_ID = '@Netizenshop'
 EXCEL_FILE = 'products.xlsx'
 MESSAGE_IDS_FILE = 'message_ids.json'
