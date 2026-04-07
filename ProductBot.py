@@ -24,8 +24,6 @@ print("✅ Веб-сервер запущен")
 TOKEN = "8708654790:AAEG-HQcgYgLykvceLpGJUiQFLOuS3d8c2k"
 CHANNEL = "@Netizenshop"
 FILE = "products.xlsx"
-MESSAGE_ID_FILE = "post_message_id.txt"
-
 # ========= ПРЕМИУМ ЭМОДЗИ ==========
 # ID эмодзи из Telegram Premium
 # Ты можешь заменить эти ID на свои из @PremiumEmojiBot
