@@ -5,7 +5,6 @@ from telegram import Bot
 from flask import Flask
 import threading
 from datetime import datetime
-import nest_asyncio
 
 # ========= ДИАГНОСТИКА ==========
 print("🔍 ДИАГНОСТИКА ЗАПУЩЕНА")
@@ -174,64 +173,78 @@ def read_products_from_excel():
     print(f"📖 Прочитано товаров: {len(products)}")
     return products
 
-async def main():
+def run_bot():
+    """Запускает бота в отдельном потоке с собственным event loop"""
     print("🚀 Бот запускается...")
-    bot = Bot(token=TOKEN)
-    post_message_id = load_post_message_id()
-    if post_message_id:
-        print(f"📝 Найден существующий пост с ID: {post_message_id}")
-    else:
-        print("📝 Создаём новый пост")
     
-    # Первый запуск сразу
-    print("🔄 Первая проверка Excel...")
-    if os.path.exists(FILE):
-        products = read_products_from_excel()
-        if products:
-            post_text = format_price_list(products)
-            print("📝 Отправляю первый пост...")
-            try:
-                msg = await bot.send_message(
-                    chat_id=CHANNEL,
-                    text=post_text
-                )
-                post_message_id = msg.message_id
-                save_post_message_id(post_message_id)
-                print(f"✅ Пост отправлен! ID: {post_message_id}")
-            except Exception as e:
-                print(f"❌ Ошибка отправки: {e}")
-        else:
-            print("⚠️ Нет товаров")
-    else:
-        print(f"❌ Нет файла {FILE}")
+    # Создаём новый event loop для этого потока
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     
-    # Цикл обновления каждые 60 секунд
-    while True:
-        await asyncio.sleep(60)
-        print("🔄 Обновляю...")
+    async def bot_task():
+        bot = Bot(token=TOKEN)
+        post_message_id = load_post_message_id()
+        
+        # Первый запуск
+        print("🔄 Проверяю Excel...")
         if os.path.exists(FILE):
             products = read_products_from_excel()
-            if products and post_message_id:
+            if products:
                 post_text = format_price_list(products)
+                print("📝 Отправляю пост...")
                 try:
-                    await bot.edit_message_text(
-                        chat_id=CHANNEL,
-                        message_id=post_message_id,
-                        text=post_text
-                    )
-                    print("✅ Пост обновлён")
+                    if post_message_id:
+                        await bot.edit_message_text(
+                            chat_id=CHANNEL,
+                            message_id=post_message_id,
+                            text=post_text
+                        )
+                        print("✅ Пост обновлён")
+                    else:
+                        msg = await bot.send_message(
+                            chat_id=CHANNEL,
+                            text=post_text
+                        )
+                        save_post_message_id(msg.message_id)
+                        print(f"✅ Пост отправлен! ID: {msg.message_id}")
                 except Exception as e:
-                    print(f"❌ Ошибка обновления: {e}")
-                    if "message to edit not found" in str(e).lower():
-                        post_message_id = None
-                        save_post_message_id(None)
+                    print(f"❌ Ошибка отправки: {e}")
+            else:
+                print("⚠️ Нет товаров")
+        else:
+            print(f"❌ Нет файла {FILE}")
+        
+        # Цикл обновления
+        while True:
+            await asyncio.sleep(60)
+            print("🔄 Обновляю...")
+            if os.path.exists(FILE):
+                products = read_products_from_excel()
+                if products and post_message_id:
+                    post_text = format_price_list(products)
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=CHANNEL,
+                            message_id=post_message_id,
+                            text=post_text
+                        )
+                        print("✅ Пост обновлён")
+                    except Exception as e:
+                        print(f"❌ Ошибка: {e}")
+    
+    loop.run_until_complete(bot_task())
 
 # ========= ЗАПУСК ==========
 if __name__ == "__main__":
-    # Применяем nest_asyncio для работы в потоке
+    # Запускаем бота в отдельном потоке
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    print("✅ Бот-поток запущен")
+    
+    # Держим главный поток живым
     try:
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    except RuntimeError:
-        asyncio.run(main())
+        while True:
+            import time
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Остановка...")
