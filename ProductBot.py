@@ -21,60 +21,51 @@ print("✅ Веб-сервер запущен")
 # ===============================
 
 # ========= НАСТРОЙКИ ==========
-TOKEN = "8103497827:AAF4FrhXgx4PTpuLbK6dY-tALg7Iu6UWhkE"  # ← ТВОЙ ТОКЕН
+TOKEN = "8103497827:AAF4FrhXgx4PTpuLbK6dY-tALg7Iu6UWhkE"
 CHANNEL = "@Netizenshop"
 FILE = "products.xlsx"
 MESSAGE_ID_FILE = "post_message_id.txt"
 
-# Обычные эмодзи (будут использоваться, если в Excel нет ID)
-DEFAULT_EMOJI = {
+# Эмодзи для оформления
+EMOJI = {
     'update': '📌',
     'check': '✅',
     'battery': '🔋',
     'storage': '💾',
     'cross': '❌',
     'truck': '🚚',
-    'phone': '📞'
+    'phone': '📞',
+    'dot': '•'
 }
 
-def get_emoji_html(emoji_id, default_emoji):
-    """Возвращает HTML-тег для премиум-эмодзи или обычный эмодзи"""
-    if emoji_id and str(emoji_id).strip():
-        clean_id = str(emoji_id).strip('[]').strip()
-        return f'<tg-emoji emoji-id="{clean_id}">{default_emoji}</tg-emoji>'
-    return default_emoji
-
-def format_price_list(products, global_emoji_ids):
+def format_price_list(products):
     """
     Форматирует прайс-лист
-    products: список товаров с полями model, storage, type, color, price, emoji_id
-    global_emoji_ids: словарь с ID общих эмодзи (update, check, battery, storage, cross, truck, phone)
+    products: список товаров с полями model, storage, type, color, price
     """
     lines = []
     
     # Заголовок с датой
     today = datetime.now().strftime("%d.%m.%Y")
     lines.append(f"{today}")
-    
-    update_emoji = get_emoji_html(global_emoji_ids.get('update'), DEFAULT_EMOJI['update'])
-    lines.append(f"{update_emoji} последнее обновление цен")
+    lines.append(f"{EMOJI['update']} последнее обновление цен")
     lines.append("")
     
-    check_emoji = get_emoji_html(global_emoji_ids.get('check'), DEFAULT_EMOJI['check'])
-    lines.append(f"{check_emoji} Гарантия 14 дней со дня покупки.")
+    # Гарантия
+    lines.append(f"{EMOJI['check']} Гарантия 14 дней со дня покупки.")
     lines.append("Дополнительная гарантия:")
     lines.append("+3 месяца - 2.500₽")
     lines.append("+6 месяцев - 4.000₽")
     lines.append("+12 месяцев - 6.000₽")
     lines.append("")
     
-    battery_emoji = get_emoji_html(global_emoji_ids.get('battery'), DEFAULT_EMOJI['battery'])
-    lines.append(f"{battery_emoji} Блоки зарядки:")
+    # Блоки зарядки
+    lines.append(f"{EMOJI['battery']} Блоки зарядки:")
     lines.append("20w - 2.490₽")
     lines.append("40/60w - 3.990₽")
     lines.append("")
     
-    # Группируем товары по модели и объёму
+    # Группируем товары
     grouped = {}
     for p in products:
         model = p.get('model', 'iPhone 17')
@@ -82,18 +73,14 @@ def format_price_list(products, global_emoji_ids):
         sim_type = p.get('type', 'eSIM')
         color = p.get('color', '')
         price = p.get('price')
-        emoji_id = p.get('emoji_id')  # ID эмодзи для этого товара
         
         key = (model, storage, sim_type)
         if key not in grouped:
             grouped[key] = []
-        grouped[key].append((color, price, emoji_id))
+        grouped[key].append((color, price))
     
     # Сортируем модели
     model_order = ["iPhone 17", "iPhone 17 Air"]
-    
-    storage_emoji = get_emoji_html(global_emoji_ids.get('storage'), DEFAULT_EMOJI['storage'])
-    cross_emoji = get_emoji_html(global_emoji_ids.get('cross'), DEFAULT_EMOJI['cross'])
     
     for model in model_order:
         if model not in [k[0] for k in grouped.keys()]:
@@ -103,24 +90,20 @@ def format_price_list(products, global_emoji_ids):
         
         for (_, storage, sim_type), items in sorted(model_items.items(), key=lambda x: int(x[0][1].replace('GB', ''))):
             type_label = "eSIM" if sim_type == "eSIM" else "SIM + eSIM"
-            lines.append(f"{storage_emoji} {model} — {storage} ({type_label})")
+            lines.append(f"{EMOJI['storage']} {model} — {storage} ({type_label})")
             
-            for color, price, emoji_id in sorted(items, key=lambda x: x[0]):
-                color_emoji = get_emoji_html(emoji_id, '•')
-                
+            for color, price in sorted(items, key=lambda x: x[0]):
                 if price and price > 0:
                     price_str = f"{int(price):,}₽".replace(',', '.')
-                    lines.append(f"  {color_emoji} {color} — {price_str}")
+                    lines.append(f"  {EMOJI['dot']} {color} — {price_str}")
                 else:
-                    lines.append(f"  {color_emoji} {color} — {cross_emoji}")
+                    lines.append(f"  {EMOJI['dot']} {color} — {EMOJI['cross']}")
             lines.append("")
     
-    truck_emoji = get_emoji_html(global_emoji_ids.get('truck'), DEFAULT_EMOJI['truck'])
-    phone_emoji = get_emoji_html(global_emoji_ids.get('phone'), DEFAULT_EMOJI['phone'])
-    
+    # Футер
     lines.append("━━━━━━━━━━━━━━━━━━")
-    lines.append(f"{truck_emoji} Доставка по РФ")
-    lines.append(f"{phone_emoji} Для заказа: @manager")
+    lines.append(f"{EMOJI['truck']} Доставка по РФ")
+    lines.append(f"{EMOJI['phone']} Для заказа: @manager")
     lines.append("")
     lines.append("eSIM - только виртуальные (нет физического слота под сим)")
     lines.append("SIM+eSIM - одна физическая сим карта + виртуальные")
@@ -141,33 +124,20 @@ def save_post_message_id(message_id):
         os.remove(MESSAGE_ID_FILE)
 
 def read_products_from_excel():
-    """Читает товары из Excel (6 колонок)"""
+    """Читает товары из Excel (5 колонок: Model, Storage, Type, Color, Price)"""
     wb = openpyxl.load_workbook(FILE)
     sheet = wb.active
     
     products = []
-    global_emoji_ids = {}
-    
-    # Сначала читаем глобальные эмодзи (первая строка после заголовка?)
-    # Для простоты: будем читать все строки, а глобальные эмодзи отдельно не храним
     
     for row in sheet.iter_rows(min_row=2, values_only=True):
-        # Ожидаем 6 колонок: Model, Storage, Type, Color, Price, Emoji ID
         model = row[0] if len(row) > 0 else None
         storage = row[1] if len(row) > 1 else None
         sim_type = row[2] if len(row) > 2 else None
         color = row[3] if len(row) > 3 else None
         price = row[4] if len(row) > 4 else None
-        emoji_id = row[5] if len(row) > 5 else None
         
         if not model or not storage or not sim_type or not color:
-            continue
-        
-        # Проверяем, не является ли это строкой с глобальными настройками
-        # Если model начинается с "GLOBAL_", то это настройка
-        if str(model).startswith("GLOBAL_"):
-            key = str(model).replace("GLOBAL_", "").lower()
-            global_emoji_ids[key] = emoji_id
             continue
         
         # Преобразуем цену
@@ -184,12 +154,11 @@ def read_products_from_excel():
             'storage': str(storage).strip(),
             'type': str(sim_type).strip(),
             'color': str(color).strip(),
-            'price': price,
-            'emoji_id': emoji_id if emoji_id else None
+            'price': price
         })
     
     wb.close()
-    return products, global_emoji_ids
+    return products
 
 async def main():
     print("🚀 Бот запускается...")
@@ -207,10 +176,12 @@ async def main():
             
             if not os.path.exists(FILE):
                 print(f"❌ Файл {FILE} не найден!")
+                print(f"📂 Текущая директория: {os.getcwd()}")
+                print(f"📂 Файлы в директории: {os.listdir('.')}")
                 await asyncio.sleep(60)
                 continue
             
-            products, global_emoji_ids = read_products_from_excel()
+            products = read_products_from_excel()
             print(f"📦 Найдено товаров: {len(products)}")
             
             if not products:
@@ -218,29 +189,32 @@ async def main():
                 await asyncio.sleep(60)
                 continue
             
-            post_text = format_price_list(products, global_emoji_ids)
+            post_text = format_price_list(products)
+            
+            # Выводим в консоль для отладки
+            print("📝 Текст поста:")
+            print(post_text)
+            print("---")
             
             try:
                 if post_message_id:
                     await bot.edit_message_text(
                         chat_id=CHANNEL,
                         message_id=post_message_id,
-                        text=post_text,
-                        parse_mode="HTML"
+                        text=post_text
                     )
                     print("✅ Пост обновлён")
                 else:
                     msg = await bot.send_message(
                         chat_id=CHANNEL,
-                        text=post_text,
-                        parse_mode="HTML"
+                        text=post_text
                     )
                     post_message_id = msg.message_id
                     save_post_message_id(post_message_id)
                     print(f"✅ Новый пост отправлен (ID: {post_message_id})")
                     
             except Exception as e:
-                print(f"❌ Ошибка: {e}")
+                print(f"❌ Ошибка при отправке: {e}")
                 if "message to edit not found" in str(e).lower():
                     post_message_id = None
                     save_post_message_id(None)
