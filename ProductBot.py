@@ -9,28 +9,9 @@ import json
 import jdatetime
 import subprocess
 import sys
+from flask import Flask
+import threading
 
-# ========== НАСТРОЙКИ ПРОКСИ (ОБХОД БЛОКИРОВКИ) ==========
-# ВСТАВЬ СЮДА ДАННЫЕ ТВОЕГО ПРОКСИ
-# Если прокси нет, пока оставь закомментированным
-# 
-# Пример для SOCKS5 прокси:
-# PROXY_HOST = "123.456.789.0"   # IP адрес прокси
-# PROXY_PORT = 1080              # Порт прокси
-# PROXY_USER = "username"        # Логин (если нужен)
-# PROXY_PASS = "password"        # Пароль (если нужен)
-
-# РАСКОММЕНТИРУЙ ЭТИ СТРОКИ, КОГДА ПОЛУЧИШЬ ПРОКСИ
-# from telegram.ext import Updater
-# request_kwargs = {
-#     'proxy_url': f'socks5://{PROXY_HOST}:{PROXY_PORT}/',
-#     'urllib3_proxy_kwargs': {
-#         'username': PROXY_USER,
-#         'password': PROXY_PASS,
-#     }
-# }
-
-# ========== ОСТАЛЬНЫЕ НАСТРОЙКИ ==========
 REQUIRED_LIBRARIES = [
     "openpyxl",
     "python-telegram-bot",
