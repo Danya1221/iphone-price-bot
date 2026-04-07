@@ -2,6 +2,7 @@ import os
 import asyncio
 import openpyxl
 from telegram import Bot
+from telegram.constants import ParseMode
 from flask import Flask
 import threading
 from datetime import datetime
@@ -36,13 +37,11 @@ DEFAULT_EMOJI = {
     'update': '📌',
     'check': '✅',
     'battery': '🔋',
-    'storage': '💾',
+    'storage': '📱',
     'cross': '❌',
     'truck': '🚚',
     'phone': '📞',
-    'dot': '•',
-    'fire': '🔥',
-    'star': '⭐'
+    'dot': '•'
 }
 
 def clean_emoji_id(emoji_id):
@@ -52,7 +51,7 @@ def clean_emoji_id(emoji_id):
     
     emoji_id = str(emoji_id).strip()
     
-    # Если это HTML тег, вытаскиваем ID
+    # Если это уже HTML тег, вытаскиваем ID
     if 'emoji-id="' in emoji_id:
         match = re.search(r'emoji-id="(\d+)"', emoji_id)
         if match:
@@ -68,7 +67,10 @@ def clean_emoji_id(emoji_id):
     return None
 
 def get_premium_emoji(emoji_id, default_emoji):
-    """Возвращает премиум-эмодзи если ID правильный"""
+    """
+    Возвращает премиум-эмодзи в правильном формате:
+    <tg-emoji emoji-id="ID">ОБЫЧНЫЙ_ЭМОДЗИ</tg-emoji>
+    """
     clean_id = clean_emoji_id(emoji_id)
     if clean_id:
         return f'<tg-emoji emoji-id="{clean_id}">{default_emoji}</tg-emoji>'
@@ -81,6 +83,7 @@ def format_price_list(products, global_emoji_ids):
     # Заголовок с датой
     today = datetime.now().strftime("%d.%m.%Y")
     lines.append(f"{today}")
+    lines.append("")
     
     # Обновление цен
     update_emoji = get_premium_emoji(global_emoji_ids.get('update'), DEFAULT_EMOJI['update'])
@@ -131,9 +134,12 @@ def format_price_list(products, global_emoji_ids):
         
         for (_, storage, sim_type), items in sorted(model_items.items(), key=lambda x: int(x[0][1].replace('GB', ''))):
             type_label = "eSIM" if sim_type == "eSIM" else "SIM + eSIM"
+            
+            # ЗАГОЛОВОК МОДЕЛИ С ПРЕМИУМ-ЭМОДЗИ
             lines.append(f"{storage_emoji} {model} — {storage} ({type_label})")
             
             for color, price, emoji_id in sorted(items, key=lambda x: x[0]):
+                # ЦВЕТ С ПРЕМИУМ-ЭМОДЗИ
                 color_emoji = get_premium_emoji(emoji_id, DEFAULT_EMOJI['dot'])
                 
                 if price and price > 0:
@@ -157,7 +163,7 @@ def format_price_list(products, global_emoji_ids):
     return "\n".join(lines)
 
 def read_products_from_excel():
-    """Читает товары из Excel (6 колонок: Model, Storage, Type, Color, Price, Emoji ID)"""
+    """Читает товары из Excel (6 колонок)"""
     try:
         wb = openpyxl.load_workbook(FILE)
         sheet = wb.active
@@ -179,7 +185,7 @@ def read_products_from_excel():
             if not model or not storage or not sim_type or not color:
                 continue
             
-            # Глобальные настройки эмодзи (начинаются с GLOBAL_)
+            # Глобальные настройки
             if str(model).upper().startswith("GLOBAL_"):
                 key = str(model).replace("GLOBAL_", "").lower()
                 global_emoji_ids[key] = emoji_id
@@ -195,16 +201,13 @@ def read_products_from_excel():
                 except (ValueError, TypeError):
                     price = None
             
-            # Очищаем эмодзи ID
-            clean_id = clean_emoji_id(emoji_id)
-            
             product = {
                 'model': str(model).strip(),
                 'storage': str(storage).strip(),
                 'type': str(sim_type).strip(),
                 'color': str(color).strip(),
                 'price': price,
-                'emoji_id': clean_id
+                'emoji_id': emoji_id if emoji_id else None
             }
             products.append(product)
         
@@ -224,59 +227,51 @@ async def send_price_list():
     bot = Bot(token=TOKEN)
     
     try:
-        # Проверяем бота
         me = await bot.get_me()
         print(f"✅ Бот: @{me.username}")
         
-        # Проверяем файл
         if not os.path.exists(FILE):
             print(f"❌ Файл {FILE} не найден!")
             return False
         
-        # Читаем данные из Excel
         products, global_emoji_ids = read_products_from_excel()
         
         if not products:
             print("⚠️ Нет товаров в Excel!")
             return False
         
-        # Форматируем прайс-лист
         post_text = format_price_list(products, global_emoji_ids)
         print(f"📝 Длина сообщения: {len(post_text)} символов")
         
-        # Отправляем сообщение
+        # Показываем первые 200 символов для проверки эмодзи
+        print(f"📝 Начало сообщения: {post_text[:200]}...")
+        
         msg = await bot.send_message(
             chat_id=CHANNEL,
             text=post_text,
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
         
         print(f"✅✅✅ ПРАЙС-ЛИСТ ОТПРАВЛЕН!")
-        print(f"📝 ID сообщения: {msg.message_id}")
-        print(f"🔗 Ссылка: https://t.me/{CHANNEL[1:]}/{msg.message_id}")
+        print(f"🔗 https://t.me/{CHANNEL[1:]}/{msg.message_id}")
         return True
         
     except Exception as e:
-        print(f"❌ Ошибка отправки: {e}")
-        print(f"Тип ошибки: {type(e).__name__}")
+        print(f"❌ Ошибка: {e}")
         return False
 
 async def main():
-    """Основной цикл бота"""
     print("=" * 50)
     print("🚀 БОТ ЗАПУЩЕН")
     print("=" * 50)
     
-    # Отправляем первый пост сразу
     await send_price_list()
     
-    # Затем каждые 60 секунд
     while True:
         print("⏳ Жду 60 секунд...")
         await asyncio.sleep(60)
         await send_price_list()
 
-# ========= ЗАПУСК ==========
 if __name__ == "__main__":
     print("🔄 Запуск бота...")
     asyncio.run(main())
