@@ -56,7 +56,7 @@ print("✅ Веб-сервер запущен")
 # ===============================
 
 # ========= НАСТРОЙКИ ==========
-TOKEN = "8103497827:AAF4FrhXgx4PTpuLbK6dY-tALg7Iu6UWhkE"
+TOKEN = "8708654790:AAEG-HQcgYgLykvceLpGJUiQFLOuS3d8c2k"
 CHANNEL = "@Netizenshop"
 
 # ========= ПРОСТОЕ ФОРМАТИРОВАНИЕ ==========
